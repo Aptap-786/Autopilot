@@ -6,10 +6,13 @@ const PORT = process.env.PORT || 3000;
 const TOKEN = process.env.AUTH_TOKEN;
 const KEY = process.env.API_KEY || process.env.ANTHROPIC_API_KEY;
 const BASE_URL = (process.env.BASE_URL ?? 'https://openrouter.ai/api/v1').replace(/\/$/, ''); // khali = Anthropic
-const MODEL = process.env.MODEL || (BASE_URL ? 'deepseek/deepseek-v4-flash:free' : 'claude-haiku-5-5');
-const VISION_MODEL = process.env.VISION_MODEL || (BASE_URL ? '' : MODEL); // image samajhne wala model
+const DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash'; // text + image dono samajhta hai
+const MODEL = process.env.MODEL || (BASE_URL ? DEFAULT_MODEL : 'claude-haiku-5-5');
+const VISION_MODEL = process.env.VISION_MODEL || (BASE_URL ? (MODEL === DEFAULT_MODEL ? DEFAULT_MODEL : '') : MODEL); // image samajhne wala model
 const IMG_MODE = process.env.IMG_MODE || 'auto'; // auto | always | off
 if (!TOKEN || !KEY) { console.error('AUTH_TOKEN aur API_KEY set karo'); process.exit(1); }
+
+console.log(`Config: model=${MODEL} base=${BASE_URL || 'anthropic'} key=${KEY.slice(0, 8)}... (${KEY.length} chars)`);
 
 const SYSTEM = 'You control an Android phone in real time. The user may speak Hindi, Hinglish or English. ' +
   'Reply with ONLY one JSON object, no other text. Keys: action (tap|swipe|swipe_loop|type|enter|back|home|open|wait|done), ' +
@@ -109,7 +112,8 @@ async function onChat(text) {
     }
   } catch (e) {
     chat.pop();
-    webLog('Error: ' + e.message);
+    console.log('Chat error:', e.message);
+    toWebs({ type: 'chat', text: 'Error: ' + e.message });
   }
 }
 
