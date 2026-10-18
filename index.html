@@ -1,0 +1,49 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoPilot</title>
+<style>
+body{font-family:system-ui;background:#111;color:#eee;margin:0;padding:16px;max-width:600px}
+input,button{font-size:16px;padding:12px;border-radius:8px;border:0;margin:4px 0;width:100%;box-sizing:border-box}
+input{background:#222;color:#eee}button{background:#333;color:#eee}
+#send{background:#0f6e56;color:#fff}#task{background:#2962ff;color:#fff}
+#stop{background:#a32d2d;color:#fff}
+.row{display:flex;gap:8px}.row button{flex:1}
+#log{white-space:pre-wrap;background:#000;padding:12px;border-radius:8px;height:48vh;overflow:auto;font-size:14px;line-height:1.5}
+.ai{color:#5dcaa5}.me{color:#85b7eb}.dim{color:#888}
+</style></head><body>
+<h2>AutoPilot</h2>
+<input id="tok" type="password" placeholder="AUTH_TOKEN">
+<div id="log"></div>
+<input id="goal" placeholder="Baat karo, phir 'task add kardo' bolo">
+<div class="row"><button id="send">Bhejo</button><button id="mic">Bolo</button></div>
+<button id="task">Task add kardo</button>
+<div class="row"><button id="direct">Seedha chalao</button><button id="stop">Stop</button></div>
+<script>
+const $=id=>document.getElementById(id);
+$('tok').value=localStorage.t||'';
+let ws;
+function add(t,c){const d=document.createElement('div');d.textContent=t;if(c)d.className=c;const l=$('log');l.appendChild(d);l.scrollTop=l.scrollHeight}
+function connect(){
+  if(!$('tok').value)return;
+  localStorage.t=$('tok').value;
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?role=web&token='+encodeURIComponent($('tok').value));
+  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='chat')add('AI: '+m.text,'ai');else if(m.type==='log')add(m.text,'dim')};
+  ws.onclose=()=>setTimeout(connect,3000);
+}
+$('tok').onchange=()=>{ws&&ws.close();connect()};
+function out(type,t){if(t&&ws&&ws.readyState===1){ws.send(JSON.stringify({type,text:t}));return true}}
+function chat(t){if(out('chat',t))add('Aap: '+t,'me')}
+$('send').onclick=()=>{chat($('goal').value.trim());$('goal').value=''};
+$('goal').onkeydown=e=>{if(e.key==='Enter')$('send').click()};
+$('task').onclick=()=>chat('task add kardo');
+$('direct').onclick=()=>{const t=$('goal').value.trim();if(out('goal',t)){add('Seedha: '+t,'me');$('goal').value=''}};
+$('stop').onclick=()=>ws&&ws.send(JSON.stringify({type:'stop'}));
+$('mic').onclick=()=>{
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!R)return add('Is browser me voice nahi hai, Chrome use karo','dim');
+  const r=new R();r.lang='hi-IN';
+  r.onresult=e=>{const t=e.results[0][0].transcript;chat(t)};
+  r.start();
+};
+connect();
+</script></body></html>
